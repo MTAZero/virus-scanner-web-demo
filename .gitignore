@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# Uploads & generated
+web/uploads/*
+!web/uploads/.gitkeep
+
+# ML artifacts (model train được; bỏ comment dòng dưới để commit model)
+web/ml/malware_cnn.keras
+
+# Archive
+*.zip
+
+# IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Extract / temp (file lớn)
+temp_extract/

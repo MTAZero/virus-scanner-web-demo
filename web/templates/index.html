@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virus Scanner - ClamAV Database</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                    <path d="M2 17l10 5 10-5"></path>
+                    <path d="M2 12l10 5 10-5"></path>
+                </svg>
+                <h1>Virus Scanner</h1>
+            </div>
+            <p class="subtitle">Quét file với ClamAV Database</p>
+        </header>
+
+        <main>
+            <div class="upload-section" id="uploadSection">
+                <div class="upload-box" id="uploadBox">
+                    <div class="upload-icon">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                    </div>
+                    <h2>Kéo thả file vào đây</h2>
+                    <p>hoặc</p>
+                    <button type="button" class="btn-primary" onclick="document.getElementById('fileInput').click()">
+                        Chọn file để quét
+                    </button>
+                    <input type="file" id="fileInput" accept="*/*" style="display: none;">
+                    <p class="file-info">Tối đa 100MB</p>
+                </div>
+            </div>
+
+            <div class="results-section" id="resultsSection" style="display: none;">
+                <div class="result-card">
+                    <div class="result-header">
+                        <h2>Kết quả quét</h2>
+                        <button class="btn-secondary" onclick="resetScan()">Quét file mới</button>
+                    </div>
+                    
+                    <div class="file-info-card" id="fileInfoCard">
+                        <h3>Thông tin file</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Tên file:</span>
+                                <span class="info-value" id="fileName">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Kích thước:</span>
+                                <span class="info-value" id="fileSize">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">MD5:</span>
+                                <span class="info-value" id="fileMD5">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">SHA256:</span>
+                                <span class="info-value" id="fileSHA256">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="threat-card" id="threatCard">
+                        <div class="threat-status" id="threatStatus">
+                            <div class="status-icon" id="statusIcon"></div>
+                            <h3 id="statusText">Đang quét...</h3>
+                            <p id="statusSubtext">Vui lòng đợi</p>
+                        </div>
+
+                        <div class="threats-list" id="threatsList" style="display: none;">
+                            <h3>Mối đe dọa phát hiện:</h3>
+                            <div class="threats-container" id="threatsContainer"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+                <div class="spinner"></div>
+                <p>Đang quét file...</p>
+            </div>
+        </main>
+
+        <footer>
+            <p>Powered by ClamAV Database | <span id="signatureCount">-</span> signatures loaded</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

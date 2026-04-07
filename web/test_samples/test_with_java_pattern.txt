@@ -1,0 +1,1 @@
+This is a test file containing java/lang/ClassLoader pattern for testing the virus scanner.
