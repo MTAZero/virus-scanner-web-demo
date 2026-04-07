@@ -9,9 +9,6 @@ venv/
 web/uploads/*
 !web/uploads/.gitkeep
 
-# ML artifacts (model train được; bỏ comment dòng dưới để commit model)
-web/ml/malware_cnn.keras
-
 # Archive
 *.zip
 

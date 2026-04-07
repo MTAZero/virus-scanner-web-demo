@@ -386,6 +386,60 @@ footer p {
     font-size: 0.875rem;
 }
 
+footer code {
+    font-size: 0.75rem;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+}
+
+.ml-card {
+    margin-top: 1.5rem;
+    padding: 1.25rem;
+    background: var(--bg-color);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.ml-card h3 {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    color: var(--text-primary);
+}
+
+.ml-hint {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+}
+
+.ml-bar-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.35rem;
+}
+
+.ml-bar-track {
+    height: 10px;
+    background: var(--border-color);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.ml-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--success-color), #34d399);
+    border-radius: 6px;
+    transition: width 0.35s ease;
+}
+
+.ml-bar-fill.danger {
+    background: linear-gradient(90deg, var(--danger-color), #f87171);
+}
+
 @media (max-width: 768px) {
     .logo h1 {
         font-size: 2rem;

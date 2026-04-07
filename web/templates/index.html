@@ -81,6 +81,20 @@
                             <h3>Mối đe dọa phát hiện:</h3>
                             <div class="threats-container" id="threatsContainer"></div>
                         </div>
+
+                        <div class="ml-card" id="mlCard" style="display: none;">
+                            <h3>Phân loại CNN (byte → ảnh 3 kênh)</h3>
+                            <p class="ml-hint" id="mlHint"></p>
+                            <div class="ml-bar-wrap" id="mlBarWrap" style="display: none;">
+                                <div class="ml-bar-label">
+                                    <span>Xác suất mã độc (ước lượng)</span>
+                                    <span id="mlProbPct">-</span>
+                                </div>
+                                <div class="ml-bar-track">
+                                    <div class="ml-bar-fill" id="mlBarFill"></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

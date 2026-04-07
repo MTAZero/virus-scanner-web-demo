@@ -22,6 +22,12 @@ except ImportError:
     AHO_CORASICK_AVAILABLE = False
     print("Warning: pyahocorasick not installed. Pattern matching will be slower.")
 
+try:
+    from ml.inference import predict_malware_cnn, MODEL_PATH as ML_MODEL_PATH
+except ImportError:
+    predict_malware_cnn = None
+    ML_MODEL_PATH = None
+
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max file size
@@ -268,6 +274,13 @@ def scan_file(file_path):
                     if len(results['threats']) >= 50:
                         break
     
+    results['ml'] = None
+    if predict_malware_cnn is not None:
+        try:
+            results['ml'] = predict_malware_cnn(str(file_path))
+        except Exception as e:
+            results['ml'] = {'available': False, 'error': str(e)}
+    
     return results
 
 @app.route('/')
@@ -308,10 +321,14 @@ def upload_file():
 @app.route('/health')
 def health():
     """Health check endpoint"""
+    ml_path = str(ML_MODEL_PATH) if ML_MODEL_PATH else None
+    ml_exists = ML_MODEL_PATH.is_file() if ML_MODEL_PATH else False
     return jsonify({
         'status': 'ok',
         'signatures_loaded': signatures_loaded,
-        'signatures_count': len(virus_signatures)
+        'signatures_count': len(virus_signatures),
+        'ml_model_path': ml_path,
+        'ml_model_available': ml_exists,
     })
 
 if __name__ == '__main__':

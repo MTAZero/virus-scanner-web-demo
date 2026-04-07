@@ -19,6 +19,14 @@ window.addEventListener('DOMContentLoaded', () => {
             if (countEl) {
                 countEl.textContent = data.signatures_count.toLocaleString();
             }
+            const foot = document.querySelector('footer p');
+            if (foot && data.ml_model_available === false && !foot.dataset.mlHintAdded) {
+                foot.dataset.mlHintAdded = '1';
+                foot.insertAdjacentHTML(
+                    'beforeend',
+                    ' | CNN: chưa có model — <code>cd web && python train_cnn.py</code>'
+                );
+            }
         })
         .catch(err => console.error('Error loading health:', err));
 });
@@ -111,6 +119,32 @@ function displayResults(data) {
     document.getElementById('fileMD5').textContent = data.file_info.md5 || '-';
     document.getElementById('fileSHA256').textContent = data.file_info.sha256 || '-';
     
+    const mlCard = document.getElementById('mlCard');
+    const mlHint = document.getElementById('mlHint');
+    const mlBarWrap = document.getElementById('mlBarWrap');
+    const mlProbPct = document.getElementById('mlProbPct');
+    const mlBarFill = document.getElementById('mlBarFill');
+    if (data.ml != null && mlCard) {
+        mlCard.style.display = 'block';
+        if (!data.ml.available) {
+            mlHint.textContent = data.ml.message || data.ml.error || 'Model CNN chưa sẵn sàng.';
+            mlBarWrap.style.display = 'none';
+        } else {
+            const p = data.ml.malware_probability;
+            const pct = Math.round(p * 1000) / 10;
+            mlHint.textContent =
+                data.ml.label === 'malware'
+                    ? `Model gán nhãn: có khả năng mã độc (${pct}% — chỉ tham khảo, cần train trên dữ liệu thật).`
+                    : `Model gán nhãn: lành (${pct}% malware score — tham khảo).`;
+            mlBarWrap.style.display = 'block';
+            mlProbPct.textContent = pct + '%';
+            mlBarFill.style.width = pct + '%';
+            mlBarFill.className = 'ml-bar-fill' + (data.ml.label === 'malware' ? ' danger' : '');
+        }
+    } else if (mlCard) {
+        mlCard.style.display = 'none';
+    }
+
     // Display threat status
     if (data.detected) {
         // Threats detected
@@ -152,6 +186,8 @@ function resetScan() {
     fileInput.value = '';
     threatsContainer.innerHTML = '';
     threatsList.style.display = 'none';
+    const mlCardReset = document.getElementById('mlCard');
+    if (mlCardReset) mlCardReset.style.display = 'none';
 }
 
 function formatFileSize(bytes) {
