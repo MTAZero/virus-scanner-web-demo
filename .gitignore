@@ -19,3 +19,9 @@ web/uploads/*
 
 # Extract / temp (file lớn)
 temp_extract/
+
+# Dataset Malimg / benign (hàng GB — giữ local, không commit)
+datasets/*.zip
+datasets/malimg_extracted/
+datasets/cridin1-malware-cnn/
+datasets/malimg_combined/

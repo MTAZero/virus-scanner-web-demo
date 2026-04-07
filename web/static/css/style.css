@@ -395,22 +395,94 @@ footer code {
 
 .ml-card {
     margin-top: 1.5rem;
-    padding: 1.25rem;
+    padding: 1.35rem;
     background: var(--bg-color);
     border-radius: 12px;
     border: 1px solid var(--border-color);
 }
 
-.ml-card h3 {
-    font-size: 1rem;
-    margin-bottom: 0.75rem;
+.ml-card-intro h3 {
+    font-size: 1.05rem;
+    margin-bottom: 0.4rem;
     color: var(--text-primary);
 }
 
-.ml-hint {
-    font-size: 0.9rem;
+.ml-card-sub {
+    font-size: 0.88rem;
     color: var(--text-secondary);
-    margin-bottom: 0.75rem;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+    padding-bottom: 0.85rem;
+    border-bottom: 1px dashed var(--border-color);
+}
+
+.ml-verdict {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-bottom: 0.85rem;
+    padding: 0.85rem 1rem;
+    background: #f8fafc;
+    border-radius: 10px;
+    border-left: 4px solid var(--primary-color);
+}
+
+.ml-badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+}
+
+.ml-badge-safe {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.ml-badge-warn {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.ml-verdict-text {
+    font-size: 0.92rem;
+    color: var(--text-primary);
+    line-height: 1.55;
+    margin: 0;
+}
+
+.ml-stat-benign {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    background: #eff6ff;
+    padding: 0.65rem 0.85rem;
+    border-radius: 8px;
+    margin-bottom: 0.85rem;
+    line-height: 1.5;
+}
+
+.ml-hint {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.65rem;
+    line-height: 1.5;
+}
+
+.ml-top5-help {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin: 0 0 0.5rem 0;
+    line-height: 1.45;
+}
+
+.ml-bar-help {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin: 0 0 0.45rem 0;
+    line-height: 1.45;
 }
 
 .ml-bar-label {
@@ -438,6 +510,28 @@ footer code {
 
 .ml-bar-fill.danger {
     background: linear-gradient(90deg, var(--danger-color), #f87171);
+}
+
+.ml-top5-wrap {
+    margin-bottom: 1rem;
+}
+
+.ml-top5-wrap h4 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--text-primary);
+}
+
+.ml-top5 {
+    list-style: none;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.ml-top5 li {
+    padding: 0.2rem 0;
+    border-bottom: 1px solid var(--border-color);
 }
 
 @media (max-width: 768px) {

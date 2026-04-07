@@ -83,13 +83,27 @@
                         </div>
 
                         <div class="ml-card" id="mlCard" style="display: none;">
-                            <h3>Phân loại CNN (byte → ảnh 3 kênh)</h3>
+                            <div class="ml-card-intro">
+                                <h3>Gợi ý từ học máy (AI)</h3>
+                                <p class="ml-card-sub">Thêm một góc nhìn tự động. Kết quả phía trên (chữ ký ClamAV) vẫn là lớp phát hiện chính — AI chỉ hỗ trợ tham khảo.</p>
+                            </div>
+                            <div class="ml-verdict" id="mlVerdict" style="display: none;">
+                                <span class="ml-badge" id="mlBadge"></span>
+                                <p class="ml-verdict-text" id="mlVerdictText"></p>
+                            </div>
                             <p class="ml-hint" id="mlHint"></p>
+                            <p class="ml-stat-benign" id="mlStatBenign" style="display: none;"></p>
+                            <div class="ml-top5-wrap" id="mlTop5Wrap" style="display: none;">
+                                <h4>Mô hình đang phân vân giữa các nhãn sau</h4>
+                                <p class="ml-top5-help">Đây là 5 nhãn có xác suất cao nhất. Với nhiều lớp cùng lúc, từng số % thường thấp — điều đó là bình thường, không có nghĩa mô hình “chắc chắn yếu”.</p>
+                                <ul class="ml-top5" id="mlTop5"></ul>
+                            </div>
                             <div class="ml-bar-wrap" id="mlBarWrap" style="display: none;">
                                 <div class="ml-bar-label">
-                                    <span>Xác suất mã độc (ước lượng)</span>
+                                    <span>Mức nghi ngờ so với file sạch</span>
                                     <span id="mlProbPct">-</span>
                                 </div>
+                                <p class="ml-bar-help">Càng cao → mô hình càng ít tin file thuộc nhóm <strong>Benign</strong> (sạch). Đây không phải % “chắc bị nhiễm” hay tên virus chính xác.</p>
                                 <div class="ml-bar-track">
                                     <div class="ml-bar-fill" id="mlBarFill"></div>
                                 </div>

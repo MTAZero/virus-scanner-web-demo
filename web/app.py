@@ -23,10 +23,11 @@ except ImportError:
     print("Warning: pyahocorasick not installed. Pattern matching will be slower.")
 
 try:
-    from ml.inference import predict_malware_cnn, MODEL_PATH as ML_MODEL_PATH
+    from ml.inference import predict_malware_cnn, MODEL_LEGACY, MODEL_PRIMARY
 except ImportError:
     predict_malware_cnn = None
-    ML_MODEL_PATH = None
+    MODEL_PRIMARY = None
+    MODEL_LEGACY = None
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -321,14 +322,19 @@ def upload_file():
 @app.route('/health')
 def health():
     """Health check endpoint"""
-    ml_path = str(ML_MODEL_PATH) if ML_MODEL_PATH else None
-    ml_exists = ML_MODEL_PATH.is_file() if ML_MODEL_PATH else False
+    ml_ok = False
+    mp = None
+    if MODEL_PRIMARY is not None:
+        if MODEL_PRIMARY.is_file():
+            ml_ok, mp = True, str(MODEL_PRIMARY)
+        elif MODEL_LEGACY is not None and MODEL_LEGACY.is_file():
+            ml_ok, mp = True, str(MODEL_LEGACY)
     return jsonify({
         'status': 'ok',
         'signatures_loaded': signatures_loaded,
         'signatures_count': len(virus_signatures),
-        'ml_model_path': ml_path,
-        'ml_model_available': ml_exists,
+        'ml_model_path': mp,
+        'ml_model_available': ml_ok,
     })
 
 if __name__ == '__main__':
