@@ -11,6 +11,8 @@
 - ✅ **CNN Malimg (theo [cridin1/malware-classification-CNN](https://github.com/cridin1/malware-classification-CNN)):** chuyển byte → ảnh xám kiểu Malimg (`hex2img`), resize **256×256**, nhân 3 kênh; mạng **Sequential + softmax** như `combined_classifier_val.ipynb` (đa lớp, gồm **Benign** nếu train đủ 26 lớp). Kết quả chỉ **tham khảo**, không thay thế chữ ký. Giải thích đầy đủ: **`readme-ml.md`**.
 - ✅ Giao diện đẹp, responsive
 - ✅ Real-time scanning với progress indicator
+- ✅ **VirusTotal (tùy chọn):** tra cứu API v3 `GET /api/v3/files/{id}` — **ưu tiên SHA256**, nếu **404** thì tự thử **MD5** (cùng endpoint; không upload file). Cần `VIRUSTOTAL_API_KEY`. HTTPS dùng **`certifi`** để tránh lỗi SSL trên một số máy.
+- ✅ **Quét thư mục (trình duyệt):** chọn thư mục, gửi từng file lên `/upload` (tối đa 120 file, lọc đuôi như server); mặc định **quét nhanh** (ClamAV + hash, bỏ AI/Malimg); có thể bật **đầy đủ AI** cho từng file (chậm).
 
 ## Cài đặt
 
@@ -28,12 +30,16 @@ pip install -r requirements.txt
 
 4. (Tùy chọn) Huấn luyện model CNN — xem **Học máy (Malimg / cridin1)**. Nếu chưa có model, server vẫn chạy; ưu tiên load `ml/malimg_model.keras`, fallback `ml/malware_cnn.keras` (mô hình nhị phân cũ nếu còn).
 
-5. Chạy server:
+5. (Tùy chọn) VirusTotal — lấy API key tại [VirusTotal](https://www.virustotal.com/gui/my-apikey). Cách đặt biến:
+   - **Khuyến nghị:** trong thư mục `web/`, sao chép `.env.example` → `.env`, mở `.env` và điền `VIRUSTOTAL_API_KEY=...` (server tự đọc nhờ `python-dotenv`).
+   - Hoặc trong terminal: `export VIRUSTOTAL_API_KEY="..."` rồi chạy `python3 app.py`.
+
+6. Chạy server:
 ```bash
 python3 app.py
 ```
 
-6. Mở trình duyệt và truy cập: `http://localhost:8080`
+7. Mở trình duyệt và truy cập: `http://localhost:8080`
 
 **Lưu ý:** Nếu port 8080 bị chiếm:
 ```bash
@@ -102,8 +108,11 @@ Nếu vẫn giữ file **`ml/malware_cnn.keras`** cũ (1 neuron sigmoid), infere
 ## API Endpoints
 
 - `GET /` - Trang chủ
-- `POST /upload` - Upload và scan (chữ ký + `ml`: `mode` `malimg_cridin1` hoặc `legacy_binary`)
-- `GET /health` - `ml_model_available`, `ml_model_path`
+- `POST /upload` - Upload và scan (multipart `file`). Form tùy chọn:
+  - `virustotal`: `1` / `true` — gọi VirusTotal theo SHA256 (cần `VIRUSTOTAL_API_KEY`).
+  - `light`: `1` — bỏ qua CNN và ảnh Malimg (dùng cho quét thư mục nhanh).
+  - `display_name`: đường dẫn hiển thị (ví dụ `webkitRelativePath` khi quét thư mục).
+- `GET /health` - `ml_model_available`, `ml_model_path`, `virustotal_configured`
 
 ## Lưu ý
 

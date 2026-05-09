@@ -8,6 +8,7 @@ https://github.com/cridin1/malware-classification-CNN
 """
 from __future__ import annotations
 
+from io import BytesIO
 from math import log
 
 import numpy as np
@@ -68,6 +69,24 @@ def file_to_malimg_tensor(path: str, target: int = MALIMG_DEFAULT_SIZE) -> np.nd
 def bytes_to_malimg_tensor(data: bytes, target: int = MALIMG_DEFAULT_SIZE) -> np.ndarray:
     g2 = bytes_to_malimg_grayscale(data)
     return grayscale_to_rgb_tensor(g2, target=target)
+
+
+def file_to_malimg_preview_png_bytes(path: str, max_side: int = 176) -> bytes:
+    """Ảnh Malimg xám, resize cạnh dài tối đa max_side → PNG bytes (cho preview UI)."""
+    with open(path, "rb") as f:
+        raw = f.read()
+    g2 = bytes_to_malimg_grayscale(raw)
+    im = Image.fromarray(g2, mode="L")
+    w, h = im.size
+    side = max(w, h, 1)
+    if side > max_side:
+        scale = max_side / float(side)
+        nw = max(1, int(round(w * scale)))
+        nh = max(1, int(round(h * scale)))
+        im = im.resize((nw, nh), Image.Resampling.LANCZOS)
+    buf = BytesIO()
+    im.save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
 
 
 # --- Tương thích model cũ (64×64, 3 byte/pixel) nếu còn file malware_cnn.keras cũ ---

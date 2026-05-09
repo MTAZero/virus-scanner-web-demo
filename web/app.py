@@ -6,6 +6,9 @@ Flask server để scan file với virus signatures
 """
 
 import os
+import uuid
+import json
+import base64
 import hashlib
 import re
 import binascii
@@ -15,6 +18,14 @@ from pathlib import Path
 import time
 import bisect
 
+_WEB_ROOT = Path(__file__).resolve().parent
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(_WEB_ROOT / '.env')
+except ImportError:
+    pass
+
 try:
     import ahocorasick
     AHO_CORASICK_AVAILABLE = True
@@ -23,11 +34,22 @@ except ImportError:
     print("Warning: pyahocorasick not installed. Pattern matching will be slower.")
 
 try:
-    from ml.inference import predict_malware_cnn, MODEL_LEGACY, MODEL_PRIMARY
+    from ml.inference import predict_malware_cnn, MODEL_LEGACY, MODEL_PRIMARY, METADATA_PATH
 except ImportError:
     predict_malware_cnn = None
     MODEL_PRIMARY = None
     MODEL_LEGACY = None
+    METADATA_PATH = None
+
+try:
+    from ml.encoding import file_to_malimg_preview_png_bytes
+except ImportError:
+    file_to_malimg_preview_png_bytes = None
+
+try:
+    from vt_client import virustotal_file_report
+except ImportError:
+    virustotal_file_report = None
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -159,9 +181,11 @@ def load_signatures():
     print(f"  - Pattern signatures: {len(pattern_signatures)}")
 
 def allowed_file(filename):
-    """Kiểm tra extension file có được phép"""
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+    """Kiểm tra extension file có được phép (hỗ trợ đường dẫn thư mục: foo/bar.exe)."""
+    if not filename:
+        return False
+    base = filename.replace('\\', '/').split('/')[-1]
+    return '.' in base and base.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 def calculate_file_hash(file_path):
     """Tính MD5 và SHA256 hash của file"""
@@ -201,8 +225,11 @@ def binary_search_hash(hash_list, target_hash):
         return hash_list[idx][1]
     return None
 
-def scan_file(file_path):
-    """Scan file với virus signatures - tối ưu với binary search và Aho-Corasick"""
+def scan_file(file_path, *, skip_ml=False, skip_malimg_preview=False):
+    """Scan file với virus signatures - tối ưu với binary search và Aho-Corasick.
+
+    skip_ml / skip_malimg_preview: dùng cho quét hàng loạt (thư mục) để giảm thời gian và payload.
+    """
     results = {
         'detected': False,
         'threats': [],
@@ -276,13 +303,61 @@ def scan_file(file_path):
                         break
     
     results['ml'] = None
-    if predict_malware_cnn is not None:
+    if not skip_ml and predict_malware_cnn is not None:
         try:
             results['ml'] = predict_malware_cnn(str(file_path))
         except Exception as e:
             results['ml'] = {'available': False, 'error': str(e)}
-    
+    elif skip_ml:
+        results['ml'] = {
+            'available': False,
+            'skipped': True,
+            'message': 'Đã bỏ qua AI (quét nhanh thư mục). Chọn quét từng file để có Malimg + CNN đầy đủ.',
+        }
+
+    results['malimg_preview_png_base64'] = None
+    if (
+        not skip_malimg_preview
+        and file_to_malimg_preview_png_bytes is not None
+    ):
+        try:
+            png = file_to_malimg_preview_png_bytes(str(file_path))
+            results['malimg_preview_png_base64'] = base64.b64encode(png).decode('ascii')
+        except Exception:
+            pass
+
     return results
+
+
+def _truthy_form(val):
+    if val is None:
+        return False
+    s = str(val).strip().lower()
+    return s in ('1', 'true', 'yes', 'on')
+
+
+def _maybe_virustotal(results, want_vt):
+    """Gắn kết quả VirusTotal (theo SHA256) vào results nếu được yêu cầu."""
+    results['virustotal'] = None
+    if not want_vt:
+        return
+    key = os.environ.get('VIRUSTOTAL_API_KEY', '').strip()
+    if not key:
+        results['virustotal'] = {
+            'queried': False,
+            'configured': False,
+            'message': 'Bật tra cứu VT nhưng chưa đặt biến môi trường VIRUSTOTAL_API_KEY.',
+        }
+        return
+    if virustotal_file_report is None:
+        results['virustotal'] = {'queried': False, 'configured': True, 'error': 'vt_module_missing'}
+        return
+    fi = results.get('file_info') or {}
+    results['virustotal'] = virustotal_file_report(
+        key,
+        sha256_hex=fi.get('sha256') or '',
+        md5_hex=fi.get('md5') or '',
+    )
 
 @app.route('/')
 def index():
@@ -300,24 +375,61 @@ def upload_file():
         return jsonify({'error': 'No file selected'}), 400
     
     if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        raw_display = (request.form.get('display_name') or file.filename or '').strip() or 'upload'
+        base_name = Path(raw_display.replace('\\', '/')).name
+        safe_base = secure_filename(base_name) or 'file'
+        stored_name = f'{uuid.uuid4().hex[:16]}_{safe_base}'
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], stored_name)
         file.save(filepath)
         
         try:
-            # Scan file
-            results = scan_file(filepath)
-            results['file_info']['filename'] = filename
+            light = _truthy_form(request.form.get('light'))
+            want_vt = _truthy_form(request.form.get('virustotal'))
+            results = scan_file(
+                filepath,
+                skip_ml=light,
+                skip_malimg_preview=light,
+            )
+            results['file_info']['filename'] = raw_display
             results['file_info']['size'] = os.path.getsize(filepath)
-            
-            # Xóa file sau khi scan (tùy chọn)
-            # os.remove(filepath)
+            results['scan_options'] = {
+                'light': light,
+                'virustotal_requested': want_vt,
+            }
+            _maybe_virustotal(results, want_vt)
             
             return jsonify(results)
         except Exception as e:
             return jsonify({'error': str(e)}), 500
     
     return jsonify({'error': 'File type not allowed'}), 400
+
+def _ml_public_metadata():
+    """Thông tin model/metadata cho UI (không cần load TensorFlow)."""
+    web_dir = Path(__file__).resolve().parent
+    out = {
+        'ml_model_kind': None,
+        'ml_num_classes': None,
+        'ml_class_names_head': None,
+        'ml_metadata_path': None,
+        'ml_reference': 'https://github.com/cridin1/malware-classification-CNN',
+    }
+    meta_path = METADATA_PATH if METADATA_PATH is not None else web_dir / 'ml' / 'malimg_metadata.json'
+    if isinstance(meta_path, Path) and meta_path.is_file():
+        try:
+            meta = json.loads(meta_path.read_text(encoding='utf-8'))
+            names = meta.get('class_names') or []
+            out['ml_num_classes'] = len(names)
+            out['ml_class_names_head'] = names[:6] if names else None
+            out['ml_metadata_path'] = str(meta_path)
+        except (OSError, json.JSONDecodeError):
+            pass
+    if MODEL_PRIMARY is not None and MODEL_PRIMARY.is_file():
+        out['ml_model_kind'] = 'malimg_softmax'
+    elif MODEL_LEGACY is not None and MODEL_LEGACY.is_file():
+        out['ml_model_kind'] = 'legacy_binary'
+    return out
+
 
 @app.route('/health')
 def health():
@@ -329,13 +441,16 @@ def health():
             ml_ok, mp = True, str(MODEL_PRIMARY)
         elif MODEL_LEGACY is not None and MODEL_LEGACY.is_file():
             ml_ok, mp = True, str(MODEL_LEGACY)
-    return jsonify({
+    payload = {
         'status': 'ok',
         'signatures_loaded': signatures_loaded,
         'signatures_count': len(virus_signatures),
         'ml_model_path': mp,
         'ml_model_available': ml_ok,
-    })
+        'virustotal_configured': bool(os.environ.get('VIRUSTOTAL_API_KEY', '').strip()),
+    }
+    payload.update(_ml_public_metadata())
+    return jsonify(payload)
 
 if __name__ == '__main__':
     # Load signatures khi start server
@@ -348,6 +463,8 @@ if __name__ == '__main__':
     print("VirusTotal-like Scanner")
     print(f"{'='*50}")
     print(f"Loaded {len(virus_signatures)} virus signatures")
+    if os.environ.get('VIRUSTOTAL_API_KEY', '').strip():
+        print("VirusTotal: VIRUSTOTAL_API_KEY configured (SHA256 lookup only)")
     print(f"Server starting on http://127.0.0.1:{port}")
     print(f"{'='*50}\n")
     

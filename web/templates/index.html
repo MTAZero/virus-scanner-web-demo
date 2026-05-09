@@ -37,7 +37,43 @@
                         Chọn file để quét
                     </button>
                     <input type="file" id="fileInput" accept="*/*" style="display: none;">
-                    <p class="file-info">Tối đa 100MB</p>
+                    <button type="button" class="btn-secondary btn-folder" id="btnPickFolder">Chọn thư mục</button>
+                    <input type="file" id="folderInput" style="display: none;" multiple webkitdirectory>
+                    <div class="upload-options">
+                        <label class="upload-opt">
+                            <input type="checkbox" id="chkVirusTotal" />
+                            <span>Tra cứu <strong>VirusTotal</strong> theo SHA256 (API v3, không upload file)</span>
+                        </label>
+                        <p class="upload-option-hint" id="vtHint">Đặt biến môi trường <code>VIRUSTOTAL_API_KEY</code>. Mỗi file = 1 request — cẩn trọng khi quét cả thư mục.</p>
+                        <label class="upload-opt">
+                            <input type="checkbox" id="chkFolderFullMl" />
+                            <span>Quét thư mục: chạy đầy đủ AI + ảnh Malimg (chậm; mặc định chỉ ClamAV + hash, nhanh hơn)</span>
+                        </label>
+                    </div>
+                    <p class="file-info">Tối đa 100MB mỗi file · thư mục tối đa 120 file (lọc theo đuôi cho phép)</p>
+                </div>
+            </div>
+
+            <div class="batch-results-section" id="batchResultsSection" style="display: none;">
+                <div class="result-card">
+                    <div class="result-header">
+                        <h2>Kết quả quét thư mục</h2>
+                        <button type="button" class="btn-secondary" onclick="resetScan()">Quét khác</button>
+                    </div>
+                    <p class="batch-summary" id="batchSummary"></p>
+                    <div class="batch-table-wrap">
+                        <table class="batch-table" id="batchTable">
+                            <thead>
+                                <tr>
+                                    <th>Đường dẫn</th>
+                                    <th>ClamAV</th>
+                                    <th>VirusTotal</th>
+                                    <th>AI (CNN)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="batchTableBody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -45,9 +81,33 @@
                 <div class="result-card">
                     <div class="result-header">
                         <h2>Kết quả quét</h2>
-                        <button class="btn-secondary" onclick="resetScan()">Quét file mới</button>
+                        <div class="result-header-actions">
+                            <button type="button" class="btn-ghost" id="btnSaveCompare" onclick="saveCompareBaseline()" title="Lưu lần quét này để so sánh với file tiếp theo">Lưu mốc so sánh</button>
+                            <button type="button" class="btn-ghost btn-ghost-muted" id="btnClearCompare" onclick="clearCompareBaseline()" style="display: none;">Xóa mốc</button>
+                            <button class="btn-secondary" onclick="resetScan()">Quét file mới</button>
+                        </div>
+                    </div>
+
+                    <div class="compare-card" id="compareCard" style="display: none;">
+                        <h3>So sánh với mốc đã lưu</h3>
+                        <p class="compare-help">Dùng cho demo: quét file A → <strong>Lưu mốc so sánh</strong> → quét file B để xem khác biệt chữ ký và AI.</p>
+                        <div class="compare-grid" id="compareGrid"></div>
                     </div>
                     
+                    <div class="malimg-preview-card" id="malimgPreviewCard" style="display: none;">
+                        <h3>Ảnh hóa byte (Malimg)</h3>
+                        <p class="malimg-preview-help">Cùng pipeline với CNN: byte → lưới 2D → coi như ảnh xám (thumbnail; kích thước gốc có thể lớn hơn).</p>
+                        <div class="malimg-preview-inner">
+                            <img id="malimgPreviewImg" alt="Malimg preview" width="176" height="176" />
+                        </div>
+                    </div>
+
+                    <div class="vt-card" id="vtCard" style="display: none;">
+                        <h3>VirusTotal</h3>
+                        <p class="vt-card-sub">Tra cứu theo <strong>SHA256</strong> (ưu tiên), nếu chưa có trên VT thì thử <strong>MD5</strong> — cùng endpoint API v3, không upload file.</p>
+                        <div id="vtBody"></div>
+                    </div>
+
                     <div class="file-info-card" id="fileInfoCard">
                         <h3>Thông tin file</h3>
                         <div class="info-grid">
@@ -96,7 +156,7 @@
                             <div class="ml-top5-wrap" id="mlTop5Wrap" style="display: none;">
                                 <h4>Mô hình đang phân vân giữa các nhãn sau</h4>
                                 <p class="ml-top5-help">Đây là 5 nhãn có xác suất cao nhất. Với nhiều lớp cùng lúc, từng số % thường thấp — điều đó là bình thường, không có nghĩa mô hình “chắc chắn yếu”.</p>
-                                <ul class="ml-top5" id="mlTop5"></ul>
+                                <div class="ml-top5-bars" id="mlTop5Bars"></div>
                             </div>
                             <div class="ml-bar-wrap" id="mlBarWrap" style="display: none;">
                                 <div class="ml-bar-label">
@@ -114,13 +174,20 @@
             </div>
 
             <div class="loading-overlay" id="loadingOverlay" style="display: none;">
-                <div class="spinner"></div>
-                <p>Đang quét file...</p>
+                <div class="loading-inner">
+                    <div class="spinner"></div>
+                    <p class="loading-title" id="loadingTitle">Đang xử lý…</p>
+                    <ul class="scan-steps" id="scanSteps" aria-live="polite">
+                        <li class="scan-step" data-step="0"><span class="scan-step-icon"></span><span>Đang đọc file và tính hash (MD5 / SHA256)</span></li>
+                        <li class="scan-step" data-step="1"><span class="scan-step-icon"></span><span>Đang so khớp chữ ký ClamAV</span></li>
+                        <li class="scan-step" data-step="2"><span class="scan-step-icon"></span><span>Đang chạy mô hình AI (Malimg / CNN)</span></li>
+                    </ul>
+                </div>
             </div>
         </main>
 
         <footer>
-            <p>Powered by ClamAV Database | <span id="signatureCount">-</span> signatures loaded</p>
+            <p>Powered by ClamAV Database | <span id="signatureCount">-</span> signatures loaded<span id="mlFooterMeta"></span></p>
         </footer>
     </div>
 
